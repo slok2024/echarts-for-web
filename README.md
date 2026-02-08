@@ -1,5 +1,8 @@
 这个项目本质上是一个基于 Web 的 ECharts 实时开发与预览环境。它的核心目标是提供一个类似于 ECharts 官方示例（Gallery）的本地化工作台，方便开发者在本地快速编写、调试和导出图表。
 
+<img width="1912" height="946" alt="image" src="https://github.com/user-attachments/assets/03473719-d136-4730-bf07-ac420cdd8161" />
+
+
 以下是该项目的四大核心模块介绍：
 
 1. 实时编辑与代码执行 (Editor)
