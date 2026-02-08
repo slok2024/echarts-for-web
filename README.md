@@ -1,98 +1,35 @@
-# Apache ECharts
+这个项目本质上是一个基于 Web 的 ECharts 实时开发与预览环境。它的核心目标是提供一个类似于 ECharts 官方示例（Gallery）的本地化工作台，方便开发者在本地快速编写、调试和导出图表。
 
-<a href="https://echarts.apache.org/">
-    <img style="vertical-align: top;" src="./asset/logo.png?raw=true" alt="logo" height="50px">
-</a>
+以下是该项目的四大核心模块介绍：
 
-Apache ECharts is a free, powerful charting and visualization library offering easy ways to add intuitive, interactive, and highly customizable charts to your commercial products. It is written in pure JavaScript and based on <a href="https://github.com/ecomfe/zrender">zrender</a>, which is a whole new lightweight canvas library.
+1. 实时编辑与代码执行 (Editor)
+项目集成了 Monaco Editor（VS Code 的核心编辑器），支持 JavaScript 和 TypeScript 语法。
 
-**[中文官网](https://echarts.apache.org/zh/index.html)** | **[ENGLISH HOMEPAGE](https://echarts.apache.org/en/index.html)**
+代码注入机制：利用 new Function 技术，将用户编写的代码动态注入到预设的环境中。
 
-[![License](https://img.shields.io/npm/l/echarts?color=5470c6)](https://github.com/apache/echarts/blob/master/LICENSE) [![Latest npm release](https://img.shields.io/npm/v/echarts?color=91cc75)](https://www.npmjs.com/package/echarts) [![NPM downloads](https://img.shields.io/npm/dm/echarts.svg?label=npm%20downloads&style=flat&color=fac858)](https://www.npmjs.com/package/echarts) [![Contributors](https://img.shields.io/github/contributors/apache/echarts?color=3ba272)](https://github.com/apache/echarts/graphs/contributors)
+环境预设：自动为代码环境注入了 echarts 实例、myChart 对象、jQuery 以及 ROOT_PATH。这意味着你可以直接粘贴官方示例代码而无需任何修改。
 
-[![Build Status](https://github.com/apache/echarts/actions/workflows/ci.yml/badge.svg)](https://github.com/apache/echarts/actions/workflows/ci.yml)
+2. 动态渲染容器 (Preview)
+右侧预览区负责承载图表的生命周期管理。
 
-## Get Apache ECharts
+智能重绘：每次点击“运行”时，系统会先执行 myChart.dispose() 销毁旧实例，再初始化新实例，防止内存泄漏和配置项污染。
 
-You may choose one of the following methods:
+深色模式一键切换：支持在渲染时动态更改主题。
 
-+ Download from the [official website](https://echarts.apache.org/download.html)
-+ `npm install echarts --save`
-+ CDN: [jsDelivr CDN](https://www.jsdelivr.com/package/npm/echarts?path=dist)
+3. 灵活的布局管理 (Layout)
+采用了经典的三栏式布局，并实现了原生的拖拽缩放逻辑：
 
-## Docs
+左侧示例库：分类展示常用的 ECharts 模板。
 
-+ [Get Started](https://echarts.apache.org/handbook)
-+ [API](https://echarts.apache.org/api.html)
-+ [Option Manual](https://echarts.apache.org/option.html)
-+ [Examples](https://echarts.apache.org/examples)
+中间编辑器：代码编写区域。
 
-## Get Help
+右侧预览区：结果展示。
 
-+ [GitHub Issues](https://github.com/apache/echarts/issues) for bug report and feature requests
-+ Email [dev@echarts.apache.org](mailto:dev@echarts.apache.org) for general questions
-+ Subscribe to the [mailing list](https://echarts.apache.org/maillist.html) to get updated with the project
+双向调节：用户可以通过拖拽分割线（Resizer）实时调整各区域的比例，编辑器和图表会自动触发 resize() 以适应新尺寸。
 
-## Build
+4. 增强的兼容性修复
+针对你之前遇到的“加载中”和“不出东西”的问题，该项目特别优化了：
 
-Build echarts source code:
+异步支持：即使代码中包含 setTimeout 或异步获取 JSON 数据，环境也能通过 showLoading 状态正确处理。
 
-Execute the instructions in the root directory of the echarts:
-([Node.js](https://nodejs.org) is required)
-
-```shell
-# Install the dependencies from NPM:
-npm install
-
-# Rebuild source code immediately in watch mode when changing the source code.
-# It opens the `./test` directory, and you may open `-cases.html` to get the list
-# of all test cases.
-# If you wish to create a test case, run `npm run mktest:help` to learn more.
-npm run dev
-
-# Check the correctness of TypeScript code.
-npm run checktype
-
-# If intending to build and get all types of the "production" files:
-npm run release
-```
-
-Then the "production" files are generated in the `dist` directory.
-
-## Contribution
-
-Please refer to the [contributing](https://github.com/apache/echarts/blob/master/CONTRIBUTING.md) document if you wish to debug locally or make pull requests.
-
-## Resources
-
-### Awesome ECharts
-
-[https://github.com/ecomfe/awesome-echarts](https://github.com/ecomfe/awesome-echarts)
-
-### Extensions
-
-+ [ECharts GL](https://github.com/ecomfe/echarts-gl) An extension pack of ECharts, which provides 3D plots, globe visualization, and WebGL acceleration.
-
-+ [Liquidfill 水球图](https://github.com/ecomfe/echarts-liquidfill)
-
-+ [Wordcloud 字符云](https://github.com/ecomfe/echarts-wordcloud)
-
-+ [Extension for Baidu Map 百度地图扩展](https://github.com/apache/echarts/tree/master/extension-src/bmap) An extension provides a wrapper of Baidu Map Service SDK.
-
-+ [vue-echarts](https://github.com/ecomfe/vue-echarts) ECharts component for Vue.js
-
-+ [echarts-stat](https://github.com/ecomfe/echarts-stat) Statistics tool for ECharts
-
-## License
-
-ECharts is available under the Apache License V2.
-
-## Code of Conduct
-
-Please refer to [Apache Code of Conduct](https://www.apache.org/foundation/policies/conduct.html).
-
-## Paper
-
-Deqing Li, Honghui Mei, Yi Shen, Shuang Su, Wenli Zhang, Junting Wang, Ming Zu, Wei Chen.
-[ECharts: A Declarative Framework for Rapid Construction of Web-based Visualization](https://www.sciencedirect.com/science/article/pii/S2468502X18300068).
-Visual Informatics, 2018.
+本地服务器友好：针对跨域问题做了变量适配，建议配合 Python 或 Node.js 本地服务器使用。
