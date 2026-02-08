@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECharts 6.0 </title>
+    <script src="https://fastly.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style>
+        :root { 
+            --bg-color: #ffffff; 
+            --sidebar-bg: #f7f8fa; 
+            --border-color: #e0e0e0; 
+            --accent: #5470c6; 
+            --text-main: #333;
+            --header-h: 56px;
+        }
+
+        body.dark-theme {
+            --bg-color: #1a1b26;
+            --sidebar-bg: #16161e;
+            --border-color: #414868;
+            --text-main: #c0caf5;
+        }
+
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg-color); color: var(--text-main); font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
+
+        /* 顶部导航 */
+        header {
+            height: var(--header-h); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 20px; justify-content: space-between;
+            background: var(--bg-color); z-index: 10;
+        }
+        .logo-area { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+        .actions { display: flex; gap: 10px; }
+        
+        button {
+            padding: 6px 12px; border: 1px solid var(--border-color); background: transparent; color: inherit; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; display: flex; align-items: center; gap: 5px;
+        }
+        button:hover { background: rgba(0,0,0,0.05); border-color: var(--accent); color: var(--accent); }
+        button.primary { background: var(--accent); color: #fff; border: none; }
+        button.primary:hover { opacity: 0.9; box-shadow: 0 2px 8px rgba(84, 112, 198, 0.4); }
+
+        /* 主体布局 */
+        .workbench { flex: 1; display: flex; overflow: hidden; height: calc(100vh - var(--header-h)); }
+        
+        /* 侧边栏 */
+        .sidebar { width: 240px; min-width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .sidebar-title { padding: 15px; font-size: 12px; font-weight: bold; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .example-list { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+        
+        .cat-group { margin-bottom: 10px; }
+        .cat-title { padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .cat-title:hover { background: rgba(0,0,0,0.03); }
+        .cat-title::after { content: '▼'; font-size: 10px; color: #999; transition: transform 0.2s; }
+        .cat-group.collapsed .cat-title::after { transform: rotate(-90deg); }
+        .cat-group.collapsed .chart-items { display: none; }
+        
+        .chart-item { padding: 8px 15px 8px 30px; font-size: 13px; cursor: pointer; color: #666; transition: 0.2s; border-left: 3px solid transparent; }
+        .chart-item:hover { color: var(--accent); background: rgba(84, 112, 198, 0.05); }
+        .chart-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(84, 112, 198, 0.1); font-weight: 500; }
+
+        /* 编辑区域 */
+        .editor-container { width: 40%; min-width: 200px; display: flex; flex-direction: column; background: var(--sidebar-bg); }
+        .editor-toolbar { 
+            height: 40px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 10px; background: var(--sidebar-bg); justify-content: space-between; 
+        }
+        #monaco-editor { flex: 1; overflow: hidden; }
+
+        /* 语言切换按钮组 */
+        .lang-switch { display: flex; background: rgba(0,0,0,0.05); padding: 2px; border-radius: 4px; }
+        .lang-btn { padding: 2px 10px; font-size: 11px; cursor: pointer; border: none; border-radius: 3px; background: none; color: #666; }
+        .lang-btn.active { background: #fff; font-weight: bold; color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        body.dark-theme .lang-btn.active { background: #333; color: #fff; }
+
+        /* 拖拽条 (关键修复) */
+        .resizer { 
+            width: 8px; 
+            background: var(--sidebar-bg); 
+            border-left: 1px solid var(--border-color); 
+            border-right: 1px solid var(--border-color); 
+            cursor: col-resize; 
+            z-index: 20; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .resizer:hover { background: var(--accent); opacity: 0.5; }
+        /* 增加一个小抓手图标视觉 */
+        .resizer::after { content: '||'; font-size: 10px; color: #ccc; letter-spacing: -1px; } 
+
+        /* 预览区域 */
+        .preview-container { flex: 1; position: relative; display: flex; flex-direction: column; background: var(--bg-color); min-width: 200px; }
+        #chart-main { flex: 1; width: 100%; height: 100%; }
+
+        /* Loading */
+        .loading-mask { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 50; display: none; }
+        body.dark-theme .loading-mask { background: rgba(0,0,0,0.7); }
+        .loading-spinner { width: 30px; height: 30px; border: 3px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-area">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="var(--accent)"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>ECharts Pro Lab</span>
+    </div>
+    <div class="actions">
+        <button onclick="downloadImage()">📷 下载图片</button>
+        <button onclick="toggleTheme()" id="theme-btn">🌙 深色模式</button>
+        <button onclick="resetCode()">↺ 重置</button>
+        <button class="primary" onclick="run()">▶ 运行 (Ctrl+S)</button>
+    </div>
+</header>
+
+<div class="workbench">
+    <div class="sidebar">
+        <div class="sidebar-title">实例库</div>
+        <div class="example-list" id="example-nav">
+            </div>
+    </div>
+
+    <div class="editor-container" id="editor-box">
+        <div class="editor-toolbar">
+            <div class="lang-switch">
+                <button id="btn-js" class="lang-btn active" onclick="setLanguage('javascript')">JS</button>
+                <button id="btn-ts" class="lang-btn" onclick="setLanguage('typescript')">TS</button>
+            </div>
+            <div>
+                <button style="font-size: 11px; padding: 2px 8px; border:none;" onclick="formatCode()">Format</button>
+            </div>
+        </div>
+        <div id="monaco-editor"></div>
+    </div>
+
+    <div class="resizer" id="drag-handle"></div>
+
+    <div class="preview-container" id="preview-box">
+        <div class="loading-mask" id="loader"><div class="loading-spinner"></div></div>
+        <div id="chart-main"></div>
+    </div>
+</div>
+
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+<script>
+    // 扩展的实例库
+    const CHART_EXAMPLES = {
+        "📊 核心图表": [
+            {
+                name: "平滑折线图 (Gradient)",
+                code: `option = {
+  tooltip: { trigger: 'axis' },
+  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+  xAxis: { type: 'category', boundaryGap: false, data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+  yAxis: { type: 'value' },
+  series: [{
+    name: 'Traffic',
+    type: 'line',
+    smooth: true,
+    lineStyle: { width: 0 },
+    showSymbol: false,
+    areaStyle: {
+      opacity: 0.8,
+      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgb(128, 255, 165)' },
+        { offset: 1, color: 'rgb(1, 191, 236)' }
+      ])
+    },
+    emphasis: { focus: 'series' },
+    data: [140, 232, 101, 264, 90, 340, 250]
+  }]
+};`
+            },
+            {
+                name: "堆叠柱状图 (Stacked)",
+                code: `option = {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: {},
+  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+  xAxis: { type: 'value' },
+  yAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+  series: [
+    { name: 'Direct', type: 'bar', stack: 'total', label: { show: true }, emphasis: { focus: 'series' }, data: [320, 302, 301, 334, 390, 330, 320] },
+    { name: 'Mail', type: 'bar', stack: 'total', label: { show: true }, emphasis: { focus: 'series' }, data: [120, 132, 101, 134, 90, 230, 210] },
+    { name: 'Union Ads', type: 'bar', stack: 'total', label: { show: true }, emphasis: { focus: 'series' }, data: [220, 182, 191, 234, 290, 330, 310] }
+  ]
+};`
+            },
+            {
+                name: "南丁格尔玫瑰图",
+                code: `option = {
+  legend: { top: 'bottom' },
+  series: [{
+    name: 'Nightingale Chart',
+    type: 'pie',
+    radius: [50, 250],
+    center: ['50%', '50%'],
+    roseType: 'area',
+    itemStyle: { borderRadius: 8 },
+    data: [
+      { value: 40, name: 'rose 1' },
+      { value: 38, name: 'rose 2' },
+      { value: 32, name: 'rose 3' },
+      { value: 30, name: 'rose 4' },
+      { value: 28, name: 'rose 5' },
+      { value: 26, name: 'rose 6' },
+      { value: 22, name: 'rose 7' },
+      { value: 18, name: 'rose 8' }
+    ]
+  }]
+};`
+            }
+        ],
+        "📈 数据分析": [
+            {
+                name: "散点图 (Regression)",
+                code: `const data = [[10.0, 8.04], [8.0, 6.95], [13.0, 7.58], [9.0, 8.81], [11.0, 8.33], [14.0, 9.96], [6.0, 7.24], [4.0, 4.26], [12.0, 10.84], [7.0, 4.82], [5.0, 5.68]];
+option = {
+  xAxis: {}, yAxis: {},
+  series: [{
+    symbolSize: 20,
+    data: data,
+    type: 'scatter'
+  }]
+};`
+            },
+            {
+                name: "雷达图 (Radar)",
+                code: `option = {
+  legend: { data: ['Allocated Budget', 'Actual Spending'] },
+  radar: {
+    indicator: [
+      { name: 'Sales', max: 6500 },
+      { name: 'Administration', max: 16000 },
+      { name: 'Information Technology', max: 30000 },
+      { name: 'Customer Support', max: 38000 },
+      { name: 'Development', max: 52000 },
+      { name: 'Marketing', max: 25000 }
+    ]
+  },
+  series: [{
+    name: 'Budget vs spending',
+    type: 'radar',
+    data: [
+      { value: [4200, 3000, 20000, 35000, 50000, 18000], name: 'Allocated Budget' },
+      { value: [5000, 14000, 28000, 26000, 42000, 21000], name: 'Actual Spending' }
+    ]
+  }]
+};`
+            },
+             {
+                name: "仪表盘 (Gauge)",
+                code: `option = {
+  series: [{
+    type: 'gauge',
+    axisLine: {
+      lineStyle: {
+        width: 30,
+        color: [
+          [0.3, '#67e0e3'],
+          [0.7, '#37a2da'],
+          [1, '#fd666d']
+        ]
+      }
+    },
+    pointer: { itemStyle: { color: 'auto' } },
+    axisTick: { distance: -30, length: 8, lineStyle: { color: '#fff', width: 2 } },
+    splitLine: { distance: -30, length: 30, lineStyle: { color: '#fff', width: 4 } },
+    axisLabel: { color: 'inherit', distance: 40, fontSize: 20 },
+    detail: { valueAnimation: true, formatter: '{value} km/h', color: 'inherit' },
+    data: [{ value: 70 }]
+  }]
+};
+
+// 模拟动态数据
+setInterval(function () {
+  myChart.setOption({
+    series: [{ data: [{ value: +(Math.random() * 100).toFixed(2) }] }]
+  });
+}, 2000);`
+            }
+        ],
+        "🔥 高级视觉": [
+             {
+                name: "动态排序柱状图 (Race)",
+                code: `var data = [];
+for (let i = 0; i < 5; ++i) { data.push(Math.round(Math.random() * 200)); }
+
+option = {
+  xAxis: { max: 'dataMax' },
+  yAxis: { type: 'category', data: ['A', 'B', 'C', 'D', 'E'], inverse: true, animationDuration: 300, animationDurationUpdate: 300, max: 2 },
+  series: [{
+    realtimeSort: true,
+    name: 'X',
+    type: 'bar',
+    data: data,
+    label: { show: true, position: 'right', valueAnimation: true }
+  }],
+  legend: { show: true },
+  animationDuration: 0,
+  animationDurationUpdate: 3000,
+  animationEasing: 'linear',
+  animationEasingUpdate: 'linear'
+};
+
+function run() {
+  var data = option.series[0].data;
+  for (var i = 0; i < data.length; ++i) {
+    if (Math.random() > 0.9) { data[i] += Math.round(Math.random() * 2000); }
+    else { data[i] += Math.round(Math.random() * 200); }
+  }
+  myChart.setOption({ series: [{ type: 'bar', data: data }] });
+}
+
+setInterval(function() { run(); }, 3000);`
+            },
+            {
+                name: "热力图 (Heatmap)",
+                code: `// 模拟数据生成
+function getVirtualData(year) {
+  year = year || '2017';
+  var date = +echarts.number.parseDate(year + '-01-01');
+  var end = +echarts.number.parseDate((+year + 1) + '-01-01');
+  var dayTime = 3600 * 24 * 1000;
+  var data = [];
+  for (var time = date; time < end; time += dayTime) {
+    data.push([
+      echarts.format.formatTime('yyyy-MM-dd', time),
+      Math.floor(Math.random() * 10000)
+    ]);
+  }
+  return data;
+}
+
+option = {
+  visualMap: { min: 0, max: 10000, type: 'piecewise', orient: 'horizontal', left: 'center', top: 65 },
+  calendar: { top: 120, left: 30, right: 30, cellSize: ['auto', 13], range: '2016', itemStyle: { borderWidth: 0.5 }, yearLabel: { show: false } },
+  series: [{
+    type: 'heatmap',
+    coordinateSystem: 'calendar',
+    data: getVirtualData('2016')
+  }]
+};`
+            }
+        ]
+    };
+</script>
+
+<script>
+    let editor;
+    let chartInstance;
+    let isDark = false;
+    let currentLang = 'javascript';
+    let currentCode = "";
+
+    window.onload = function() {
+        initSidebar();
+        initMonaco();
+        initResizer();
+        
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                run();
+            }
+        });
+
+        window.onresize = () => {
+            if(chartInstance) chartInstance.resize();
+            if(editor) editor.layout();
+        };
+    };
+
+    // 1. 侧边栏
+    function initSidebar() {
+        const nav = document.getElementById('example-nav');
+        let firstCode = null;
+        Object.keys(CHART_EXAMPLES).forEach((cat, index) => {
+            const group = document.createElement('div');
+            group.className = 'cat-group';
+            const title = document.createElement('div');
+            title.className = 'cat-title';
+            title.innerText = cat;
+            title.onclick = () => group.classList.toggle('collapsed');
+            
+            const list = document.createElement('div');
+            list.className = 'chart-items';
+            CHART_EXAMPLES[cat].forEach((item, i) => {
+                if (!firstCode && index === 0 && i === 0) firstCode = item.code;
+                const div = document.createElement('div');
+                div.className = 'chart-item';
+                div.innerText = item.name;
+                div.onclick = () => loadExample(div, item.code);
+                list.appendChild(div);
+            });
+            group.appendChild(title);
+            group.appendChild(list);
+            nav.appendChild(group);
+        });
+        currentCode = firstCode;
+    }
+
+    // 2. Monaco Editor
+    function initMonaco() {
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: currentCode,
+                language: 'javascript',
+                theme: 'vs',
+                automaticLayout: false,
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                tabSize: 2
+            });
+            
+            editor.onDidChangeModelContent(() => {
+                localStorage.setItem('echarts-lab-code', editor.getValue());
+            });
+            
+            const saved = localStorage.getItem('echarts-lab-code');
+            if(saved) editor.setValue(saved);
+            
+            run();
+        });
+    }
+
+    // 切换语言
+    function setLanguage(lang) {
+        currentLang = lang;
+        if(editor) {
+            monaco.editor.setModelLanguage(editor.getModel(), lang);
+        }
+        document.getElementById('btn-js').className = lang === 'javascript' ? 'lang-btn active' : 'lang-btn';
+        document.getElementById('btn-ts').className = lang === 'typescript' ? 'lang-btn active' : 'lang-btn';
+    }
+
+    // 3. 运行代码 (核心)
+    function run() {
+        let code = editor.getValue();
+        const chartDom = document.getElementById('chart-main');
+        const loader = document.getElementById('loader');
+        loader.style.display = 'flex';
+
+        try {
+            // 如果是 TypeScript，先编译
+            if (currentLang === 'typescript') {
+                code = Babel.transform(code, { presets: ['typescript'], filename: 'chart.ts' }).code;
+            }
+
+            if (chartInstance) chartInstance.dispose();
+            chartInstance = echarts.init(chartDom, isDark ? 'dark' : null);
+
+            const sandbox = new Function('echarts', 'myChart', 'option', `
+                ${code}
+                return option;
+            `);
+
+            let option = {};
+            const result = sandbox(echarts, chartInstance, option);
+            
+            if (typeof result === 'object') {
+                chartInstance.setOption(result);
+            }
+            
+            showToast("渲染成功", "success");
+        } catch (e) {
+            console.error(e);
+            showToast(e.message, "error");
+        } finally {
+            setTimeout(() => { loader.style.display = 'none'; }, 200);
+        }
+    }
+
+    // 4. 下载图片 (新增)
+    function downloadImage() {
+        if (!chartInstance) {
+            showToast("图表尚未渲染", "error");
+            return;
+        }
+        try {
+            const url = chartInstance.getDataURL({
+                type: 'png',
+                pixelRatio: 2,
+                backgroundColor: isDark ? '#1a1b26' : '#ffffff'
+            });
+            const link = document.createElement('a');
+            link.download = `echarts-${Date.now()}.png`;
+            link.href = url;
+            link.click();
+            showToast("下载已开始", "success");
+        } catch(e) {
+            showToast("下载失败", "error");
+        }
+    }
+
+    function loadExample(domElement, code) {
+        document.querySelectorAll('.chart-item').forEach(el => el.classList.remove('active'));
+        domElement.classList.add('active');
+        editor.setValue(code);
+        run();
+    }
+
+    // 5. 拖拽 (修复逻辑)
+    function initResizer() {
+        const handle = document.getElementById('drag-handle');
+        const leftBox = document.getElementById('editor-box');
+        // 侧边栏宽度，需要和CSS保持一致
+        const sidebarWidth = 240; 
+        
+        let isDragging = false;
+
+        handle.addEventListener('mousedown', () => {
+            isDragging = true;
+            document.body.style.cursor = 'col-resize';
+            handle.style.background = 'var(--accent)';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            // 计算编辑器的新宽度：鼠标位置 - 侧边栏宽度
+            // 注意：因为 resizer 在 editor 右侧，所以 resizer 的左边就是 editor 的右边
+            let newWidth = e.clientX - sidebarWidth;
+            
+            // 限制最小和最大宽度
+            if (newWidth > 200 && newWidth < document.body.clientWidth - sidebarWidth - 200) {
+                leftBox.style.width = newWidth + 'px';
+                if(editor) editor.layout();
+                if(chartInstance) chartInstance.resize();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if(isDragging) {
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                handle.style.background = ''; // 恢复 CSS 默认颜色
+            }
+        });
+    }
+
+    function toggleTheme() {
+        isDark = !isDark;
+        document.body.classList.toggle('dark-theme', isDark);
+        monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
+        document.getElementById('theme-btn').innerText = isDark ? '☀️ 浅色模式' : '🌙 深色模式';
+        run();
+    }
+
+    function formatCode() {
+        editor.getAction('editor.action.formatDocument').run();
+    }
+    
+    function resetCode() {
+        if(confirm('重置代码？')) {
+            editor.setValue("// 请从左侧选择一个示例...");
+            localStorage.removeItem('echarts-lab-code');
+        }
+    }
+
+    function showToast(msg, type) {
+        Toastify({
+            text: msg,
+            duration: 3000,
+            gravity: "bottom", 
+            position: "right", 
+            style: {
+                background: type === 'error' ? "#ff5f57" : "#00b894",
+                borderRadius: "4px",
+                fontSize: "13px"
+            }
+        }).showToast();
+    }
+</script>
+</body>
+</html>
